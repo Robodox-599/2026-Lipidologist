@@ -1,28 +1,34 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.subsystems.feeder;
 
+import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import frc.robot.util.Motor.MotorConstants;
+
 public class FeederConstants {
-  public static final int feederMotorID = 17;
   public static final String feederCANBus = "rio";
-  public static final double feederGearRatio = 42.0 / 23.0;
   public static final double feederMOI = 0.01;
-
-  public static final double kP = 11;
-  public static final double kI = 0;
-  public static final double kD = 0;
-  public static final double kS = 6.5; // 5.5
-  public static final double kV = 0.031; // 0.037
-
-  // public static final double maxVelocityRotsPerSec = (12 - kS) / kV;
-  // public static final double maxAccelerationRotationsPerSecSQ = maxVelocityRotsPerSec;
-
-  public static final double supplyCurrentLimitAmps = 40;
-  public static final double statorCurrentLimitAmps = 120;
 
   public static final double stallingStatorCurrentAmps = 90;
   public static final double jammedRPSTolerance = 4;
   public static final double fuelDebounce = 0.5;
+
+  public static final MotorConstants feederMotor = new MotorConstants(
+      "Feeder",
+      17, 
+      feederCANBus,
+      InvertedValue.CounterClockwise_Positive,
+      NeutralModeValue.Brake,
+      42.0 / 23.0,
+      120.0, 40.0, 
+      0.0, 0.0, 
+      0.0, 
+      0.0,
+      11.0, 0.0, 0.0, 
+      6.5, 0.031, 0.0,
+      0.0, 
+      0.0, 
+      FeedbackSensorSourceValue.FusedCANcoder, 0, null
+  );
 }
+

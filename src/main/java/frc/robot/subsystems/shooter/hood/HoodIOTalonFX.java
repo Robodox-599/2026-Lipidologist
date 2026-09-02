@@ -1,23 +1,12 @@
 package frc.robot.subsystems.shooter.hood;
 
 import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
-import com.ctre.phoenix6.configs.ClosedLoopGeneralConfigs;
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
-import com.ctre.phoenix6.configs.FeedbackConfigs;
 import com.ctre.phoenix6.configs.MagnetSensorConfigs;
-import com.ctre.phoenix6.configs.MotionMagicConfigs;
-import com.ctre.phoenix6.configs.MotorOutputConfigs;
-import com.ctre.phoenix6.configs.Slot0Configs;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
-import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 import dev.doglog.DogLog;
 import edu.wpi.first.math.MathUtil;
@@ -27,21 +16,19 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
 import frc.robot.util.PhoenixUtil;
+import frc.robot.util.Motor.TalonFXWrapper;
 
 public class HoodIOTalonFX extends HoodIO {
-  // motors + configuration
+  
+  private final TalonFXWrapper hoodMotorWrapper;
   private final TalonFX hoodMotor;
-  TalonFXConfiguration hoodConfiguration;
-  private final CANBus hoodCANBus;
 
-  // cancoder + configuration
   private final CANcoder hoodCANCoder;
-  CANcoderConfiguration CANCoderConfig;
+  private CANcoderConfiguration CANCoderConfig;
 
-  // motion magic
   private MotionMagicVoltage motionMagic;
 
-  // status signals
+  //status signals
   private final StatusSignal<AngularVelocity> hoodVelocityRotsPerSec;
   private final StatusSignal<Temperature> hoodTemperature;
   private final StatusSignal<Angle> hoodPosition;
@@ -50,40 +37,11 @@ public class HoodIOTalonFX extends HoodIO {
   private final StatusSignal<Current> hoodSupplyCurrent;
 
   public HoodIOTalonFX() {
-    // motors + configuration
-    hoodCANBus = new CANBus();
-    hoodMotor = new TalonFX(HoodConstants.hoodMotorID, hoodCANBus);
-    hoodCANCoder = new CANcoder(HoodConstants.hoodCANCoderID, hoodCANBus);
-    hoodConfiguration =
-        new TalonFXConfiguration()
-            .withCurrentLimits(
-                new CurrentLimitsConfigs()
-                    .withSupplyCurrentLimit(HoodConstants.supplyCurrentLimit)
-                    .withSupplyCurrentLimitEnable(true)
-                    .withStatorCurrentLimit(HoodConstants.statorCurrentLimit)
-                    .withStatorCurrentLimitEnable(true))
-            .withSlot0(
-                new Slot0Configs()
-                    .withKP(HoodConstants.hoodRealkP)
-                    .withKI(HoodConstants.hoodRealkI)
-                    .withKD(HoodConstants.hoodRealkD)
-                    .withKS(HoodConstants.hoodRealkS)
-                    .withKV(HoodConstants.hoodRealkV))
-            .withFeedback(
-                new FeedbackConfigs()
-                    .withFeedbackSensorSource(FeedbackSensorSourceValue.FusedCANcoder)
-                    .withFeedbackRemoteSensorID(HoodConstants.hoodCANCoderID)
-                    .withRotorToSensorRatio(HoodConstants.hoodGearRatio))
-            .withClosedLoopGeneral(new ClosedLoopGeneralConfigs().withContinuousWrap(false))
-            .withMotorOutput(
-                new MotorOutputConfigs()
-                    .withInverted(InvertedValue.Clockwise_Positive)
-                    .withNeutralMode(NeutralModeValue.Brake))
-            .withMotionMagic(
-                new MotionMagicConfigs()
-                    .withMotionMagicCruiseVelocity(HoodConstants.hoodMaxVelocity)
-                    .withMotionMagicAcceleration(HoodConstants.hoodMaxAcceleration));
+    hoodMotorWrapper = new TalonFXWrapper(HoodConstants.hoodMotor);
+    hoodMotor = hoodMotorWrapper.getTalonFX();
 
+    //CANCoder
+    hoodCANCoder = new CANcoder(HoodConstants.hoodCANCoderID, HoodConstants.hoodCANBus);
     CANCoderConfig =
         new CANcoderConfiguration()
             .withMagnetSensor(
@@ -93,13 +51,11 @@ public class HoodIOTalonFX extends HoodIO {
                     .withAbsoluteSensorDiscontinuityPoint(
                         HoodConstants.absoluteDiscontinuityPoint));
 
-    motionMagic = new MotionMagicVoltage(targetPositionRots).withSlot(0).withEnableFOC(true);
-
-    // applying configuration
-    PhoenixUtil.tryUntilOk(10, () -> hoodMotor.getConfigurator().apply(hoodConfiguration, 1));
     PhoenixUtil.tryUntilOk(10, () -> hoodCANCoder.getConfigurator().apply(CANCoderConfig, 1));
 
-    // status signals
+    motionMagic = new MotionMagicVoltage(targetPositionRots).withSlot(0).withEnableFOC(true);
+
+    //status signal stuff
     hoodVelocityRotsPerSec = hoodMotor.getVelocity();
     hoodTemperature = hoodMotor.getDeviceTemp();
     hoodPosition = hoodCANCoder.getAbsolutePosition();
@@ -107,7 +63,6 @@ public class HoodIOTalonFX extends HoodIO {
     hoodStatorCurrent = hoodMotor.getStatorCurrent();
     hoodSupplyCurrent = hoodMotor.getSupplyCurrent();
 
-    // Update Frequency
     BaseStatusSignal.setUpdateFrequencyForAll(
         50,
         hoodVelocityRotsPerSec,
@@ -156,11 +111,12 @@ public class HoodIOTalonFX extends HoodIO {
 
   @Override
   public void setVoltage(double voltage) {
-    hoodMotor.setVoltage(voltage);
+    hoodMotorWrapper.setVoltage(voltage);
   }
 
   @Override
   public void stop() {
-    hoodMotor.setVoltage(0);
+    hoodMotorWrapper.stop();
   }
 }
+

@@ -1,26 +1,47 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
+package frc.robot.subsystems.intake.intakeRollers;
 
-package frc.robot.subsystems.intake.intakeRollers; // make sure the folder name is all lowercase
+import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import frc.robot.util.Motor.MotorConstants;
 
-/** Add your docs here. */
 public class IntakeRollersConstants {
-  public static final int intakeRollersLeaderMotorID = 14;
-  public static final int intakeRollersFollowerMotorID = 25;
-  public static final String intakeRollersLeaderCanBus = "rio";
-  public static final String intakeRollersFollowerCanBus = "rio";
-
-  public static final int intakeRollersGearRatio = 1;
+  public static final String intakeRollersCanBus = "rio";
 
   public static final double rotationalInertia = 0.01;
 
-  public static final double kP = 0;
-  public static final double kI = 0;
-  public static final double kD = 0;
-  public static final double kS = 0;
-  public static final double kV = 0;
+  public static final MotorConstants intakeRollersLeader = new MotorConstants(
+      "IntakeRollersLeader",
+      14, 
+      intakeRollersCanBus,
+      InvertedValue.CounterClockwise_Positive,
+      NeutralModeValue.Brake,
+      1.0, 
+      50.0, 20.0, 
+      0.0, 0.0, 
+      0.0, 0.0, 
+      0.0, 0.0, 0.0, 
+      0.0, 0.0, 0.0, 
+      0.0, 
+      0.0, 
+      FeedbackSensorSourceValue.FusedCANcoder, 0, null
+  );
 
-  public static final double supplyCurrentLimit = 20;
-  public static final double statorCurrentLimit = 50;
+  public static final MotorConstants intakeRollersFollower = new MotorConstants(
+      "IntakeRollersFollower",
+      25, 
+      intakeRollersCanBus,
+      InvertedValue.CounterClockwise_Positive,
+      NeutralModeValue.Brake,
+      1.0, 
+      50.0, 20.0, 
+      0.0, 0.0, 
+      0.0, 0.0, 
+      0.0, 0.0, 0.0, 
+      0.0, 0.0, 0.0, 
+      0.0, 
+      0.0, 
+      FeedbackSensorSourceValue.FusedCANcoder, 0, null
+  );
 }
+

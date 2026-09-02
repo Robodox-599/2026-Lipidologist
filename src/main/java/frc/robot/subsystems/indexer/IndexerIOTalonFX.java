@@ -3,25 +3,19 @@ package frc.robot.subsystems.indexer;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
-import com.ctre.phoenix6.configs.MotorOutputConfigs;
-import com.ctre.phoenix6.configs.OpenLoopRampsConfigs;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
 import dev.doglog.DogLog;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
-import frc.robot.util.PhoenixUtil;
+import frc.robot.util.Motor.TalonFXWrapper;
 
 public class IndexerIOTalonFX extends IndexerIO {
+  private final TalonFXWrapper indexerMotorWrapper;
   private final TalonFX indexerMotor;
   private final CANBus indexerCANBus;
-  private TalonFXConfiguration indexerConfig;
 
   private final StatusSignal<AngularVelocity> indexerVelocityRad;
   private final StatusSignal<Temperature> indexerTemperature;
@@ -32,24 +26,10 @@ public class IndexerIOTalonFX extends IndexerIO {
   private final VoltageOut voltageOut;
 
   public IndexerIOTalonFX() {
-    indexerCANBus = new CANBus(IndexerConstants.indexerCANBus);
-    indexerMotor = new TalonFX(IndexerConstants.indexerMotorID, indexerCANBus);
+    indexerCANBus = new CANBus(IndexerConstants.indexerMotor.canBus());
 
-    indexerConfig =
-        new TalonFXConfiguration()
-            .withCurrentLimits(
-                new CurrentLimitsConfigs()
-                    .withStatorCurrentLimit(IndexerConstants.statorCurrentLimitAmps)
-                    .withStatorCurrentLimitEnable(true)
-                    .withSupplyCurrentLimit(IndexerConstants.supplyCurrentLimitAmps)
-                    .withSupplyCurrentLimitEnable(true))
-            .withMotorOutput(
-                new MotorOutputConfigs()
-                    .withNeutralMode(NeutralModeValue.Brake)
-                    .withInverted(InvertedValue.Clockwise_Positive))
-            .withOpenLoopRamps(new OpenLoopRampsConfigs().withVoltageOpenLoopRampPeriod(0.5));
-
-    PhoenixUtil.tryUntilOk(10, () -> indexerMotor.getConfigurator().apply(indexerConfig, 1));
+    indexerMotorWrapper = new TalonFXWrapper(IndexerConstants.indexerMotor);
+    indexerMotor = indexerMotorWrapper.getTalonFX();
 
     voltageOut = new VoltageOut(0);
 
@@ -94,7 +74,7 @@ public class IndexerIOTalonFX extends IndexerIO {
 
   @Override
   public void stopIndexer() {
-    indexerMotor.setControl(voltageOut.withOutput(0));
+    indexerMotorWrapper.stop();
   }
 
   @Override
@@ -102,3 +82,4 @@ public class IndexerIOTalonFX extends IndexerIO {
     indexerMotor.setControl(voltageOut.withOutput(voltage).withEnableFOC(true));
   }
 }
+
