@@ -3,6 +3,7 @@ package frc.robot.subsystems.shooter.flywheels;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.controls.Follower;
+import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import dev.doglog.DogLog;
@@ -24,6 +25,8 @@ public class FlywheelsIOTalonFX extends FlywheelsIO {
     private final TalonFX flywheelBottomLeftMotor;
     private final TalonFX flywheelTopRightMotor;
     private final TalonFX flywheelBottomRightMotor;
+
+    private final VelocityTorqueCurrentFOC velocityTorqueCurrentFOC;
 
     //status signals
     private final StatusSignal<AngularVelocity> flywheelLeaderVelocityRPS;
@@ -57,6 +60,8 @@ public class FlywheelsIOTalonFX extends FlywheelsIO {
         flywheelBottomLeftMotor = flywheelBottomLeftWrapper.getTalonFX();
         flywheelTopRightMotor = flywheelTopRightWrapper.getTalonFX();
         flywheelBottomRightMotor = flywheelBottomRightWrapper.getTalonFX();
+
+        velocityTorqueCurrentFOC = new VelocityTorqueCurrentFOC(super.targetRPS);
 
         flywheelBottomLeftMotor.setControl(new Follower(flywheelLeaderMotor.getDeviceID(), MotorAlignmentValue.Aligned));
         flywheelTopRightMotor.setControl(new Follower(flywheelLeaderMotor.getDeviceID(), MotorAlignmentValue.Opposed));
@@ -102,7 +107,7 @@ public class FlywheelsIOTalonFX extends FlywheelsIO {
     public void updateInputs() {
         BaseStatusSignal.refreshAll(characterizationSignals);
 
-        super.RPS = flywheelLeaderWrapper.getVelocityRPS();
+        super.RPS = flywheelLeaderVelocityRPS.getValueAsDouble();
         super.statorCurrent = flywheelLeaderStatorCurrent.getValueAsDouble();
         super.supplyCurrent = flywheelLeaderSupplyCurrent.getValueAsDouble();
         super.isFlywheelAtSetpoint = rpmDebouncer.calculate(
@@ -120,7 +125,7 @@ public class FlywheelsIOTalonFX extends FlywheelsIO {
     @Override
     public void setRPS(double RPS) {
         super.targetRPS = RPS;
-        flywheelLeaderWrapper.setBangBangRPS(RPS);
+        flywheelLeaderMotor.setControl(velocityTorqueCurrentFOC.withVelocity(RPS));
     }
 
     @Override
