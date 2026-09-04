@@ -1,6 +1,7 @@
 package frc.robot.util;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.BangBangVoltage;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
@@ -13,6 +14,7 @@ public class Motor {
 
     public interface RobotMotor {
         void setVoltage(double volts);
+        void setBangBangRPS(double targetRPS);
         void setPositionRotations(double targetRotations);
         double getVelocityRPS();
         double getPositionRotations();
@@ -56,6 +58,7 @@ public class Motor {
     public static class TalonFXWrapper implements RobotMotor {
         private final TalonFX motor;
         private final VoltageOut voltageRequest = new VoltageOut(0);
+        private final BangBangVoltage bangBangRequest = new BangBangVoltage(0);
         private final PositionVoltage positionRequest = new PositionVoltage(0);
         private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0);
        
@@ -121,6 +124,11 @@ public class Motor {
         @Override
         public void setVoltage(double volts) {
             motor.setControl(voltageRequest.withOutput(volts));
+        }
+
+        @Override
+        public void setBangBangRPS(double targetRPS) {
+            motor.setControl(bangBangRequest.withVelocity(targetRPS * gearRatio));
         }
 
         @Override
