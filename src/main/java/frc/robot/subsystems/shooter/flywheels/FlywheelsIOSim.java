@@ -1,61 +1,73 @@
 package frc.robot.subsystems.shooter.flywheels;
 
-// import frc.robot.subsystems.shooter.flywheels.FlywheelsConstants.FlywheelConstants;
+import dev.doglog.DogLog;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.system.plant.LinearSystemId;
+import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 
 public class FlywheelsIOSim extends FlywheelsIO {
-  //   private final DCMotorSim flywheelMotorSim;
-  //   private final ProfiledPIDController pid;
+  private static final double loopPeriodSeconds = 0.02;
 
-  //   private final FlywheelConstants flywheelConstants;
+  private final DCMotorSim flywheelMotorSim;
+  private final PIDController velocityController;
+  private final SimpleMotorFeedforward feedforward;
 
   public FlywheelsIOSim() {
-    //     this.flywheelConstants = flywheelConstants;
+    flywheelMotorSim = createMotorSim(FlywheelsConstants.flywheelLeader.gearRatio());
 
-    //     flywheelMotorSim = new DCMotorSim(
-    //         LinearSystemId.createDCMotorSystem(DCMotor.getKrakenX60Foc(1),
-    // FlywheelsConstants.flywheelMOI,
-    //             FlywheelsConstants.flywheelGearRatio),
-    //         DCMotor.getKrakenX60Foc(1));
-
-    //     pid = new ProfiledPIDController(this.flywheelConstants.kP(),
-    //         this.flywheelConstants.kI(), this.flywheelConstants.kD(),
-    //         new Constraints(FlywheelsConstants.flywheelMaxVelocity,
-    // FlywheelsConstants.flywheelMaxAcceleration));
-
+    velocityController =
+        new PIDController(
+            FlywheelsConstants.flywheelLeader.kP(),
+            FlywheelsConstants.flywheelLeader.kI(),
+            FlywheelsConstants.flywheelLeader.kD());
+    feedforward =
+        new SimpleMotorFeedforward(
+            FlywheelsConstants.flywheelLeader.kS(), FlywheelsConstants.flywheelLeader.kV());
   }
 
-  //   @Override
-  //   public void updateInputs() {
-  //     flywheelMotorSim.update(0.02);
+  private static DCMotorSim createMotorSim(double gearRatio) {
+    return new DCMotorSim(
+        LinearSystemId.createDCMotorSystem(
+            DCMotor.getKrakenX60Foc(1), FlywheelsConstants.flywheelMOI, gearRatio),
+        DCMotor.getKrakenX60Foc(1));
+  }
 
-  //     super.RPS = flywheelMotorSim.getAngularVelocityRPM() / 60.0;
-  //     super.statorCurrent = flywheelMotorSim.getCurrentDrawAmps();
-  //     super.isFlywheelAtSetpoint = Math.abs(super.RPS - super.targetRPS) <
-  // FlywheelsConstants.RPSTolerance;
+  @Override
+  public void updateInputs() {
+    flywheelMotorSim.update(loopPeriodSeconds);
 
-  //     DogLog.log("Flywheels/" + this.flywheelConstants.name() + "/RPS", super.RPS);
-  //     DogLog.log("Flywheels/" + this.flywheelConstants.name() + "/TargetRPS", super.targetRPS);
-  //     DogLog.log("Flywheels/" + this.flywheelConstants.name() + "/StatorCurrent",
-  // super.statorCurrent);
-  //     DogLog.log("Flywheels/" + this.flywheelConstants.name() + "/IsFlywheelAtSpeed",
-  // super.isFlywheelAtSetpoint);
-  //   }
+    super.RPS = flywheelMotorSim.getAngularVelocityRPM() / 60.0;
+    super.statorCurrent = flywheelMotorSim.getCurrentDrawAmps();
+    super.isFlywheelAtSetpoint =
+        Math.abs(super.RPS - super.targetRPS) < FlywheelsConstants.RPSTolerance;
 
-  //   @Override
-  //   public void setVoltage(double voltage) {
-  //     flywheelMotorSim.setInputVoltage(MathUtil.clamp(voltage, -12, 12));
-  //   }
+    DogLog.log("Flywheels/RPS", super.RPS);
+    DogLog.log("Flywheels/TargetRPS", super.targetRPS);
+    DogLog.log("Flywheels/statorCurrent", super.statorCurrent);
+    DogLog.log("Flywheels/IsFlywheelAtSpeed", super.isFlywheelAtSetpoint);
+  }
 
-  //   @Override
-  //   public void setRPS(double RPS) {
-  //     super.targetRPS = RPS;
-  //     setVoltage(pid.calculate(flywheelMotorSim.getAngularVelocityRPM() / 60.0,
-  // super.targetRPS));
-  //   }
+  @Override
+  public void setRPS(double RPS) {
+    super.targetRPS = RPS;
+    double voltage =
+        velocityController.calculate(super.RPS, RPS) + feedforward.calculate(RPS);
+    setVoltage(voltage);
+  }
 
-  //   @Override
-  //   public void stop() {
-  //     super.targetRPS = 0;
-  //     setVoltage(0);
-  //   }
+  @Override
+  public void setVoltage(double voltage) {
+    double clampedVoltage = MathUtil.clamp(voltage, -12.0, 12.0);
+    flywheelMotorSim.setInputVoltage(clampedVoltage);
+  }
+
+  @Override
+  public void stop() {
+    super.targetRPS = 0.0;
+    velocityController.reset();
+    setVoltage(0.0);
+  }
 }

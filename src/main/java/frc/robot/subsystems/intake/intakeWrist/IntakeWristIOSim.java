@@ -5,6 +5,7 @@
 package frc.robot.subsystems.intake.intakeWrist;
 
 import dev.doglog.DogLog;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
@@ -14,20 +15,15 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim;
 /** Add your docs here. */
 public class IntakeWristIOSim extends IntakeWristIO {
   private final DCMotorSim intakeWristMotorSim;
-  private final ProfiledPIDController pid; // type is trapazoidal motion
+  private final ProfiledPIDController pid;
 
   public IntakeWristIOSim() {
-    // intakeWristMotorSim = new SingleJointedArmSim(DCMotor.getKrakenX60Foc(1),
-    // IntakeWristConstants.gearRatio, 0.01,
-    //         IntakeWristConstants.wristLengthMeters, IntakeWristConstants.minAngleRad,
-    //         IntakeWristConstants.maxAngleRad, true,
-    // Units.degreesToRadians(IntakeWristConstants.startAngleRad));
     intakeWristMotorSim =
         new DCMotorSim(
             LinearSystemId.createDCMotorSystem(
                 DCMotor.getKrakenX60Foc(1),
                 IntakeWristConstants.rotationalInertia,
-                IntakeWristConstants.gearRatio),
+          IntakeWristConstants.intakeWristMotor.gearRatio()),
             DCMotor.getKrakenX60Foc(1));
     pid =
         new ProfiledPIDController(
@@ -36,22 +32,20 @@ public class IntakeWristIOSim extends IntakeWristIO {
             IntakeWristConstants.kDSim,
             new Constraints(
                 IntakeWristConstants.maxVelocitySim, IntakeWristConstants.maxAccelerationSim));
-    // ff = new ArmFeedforward(IntakeWristConstants.kSSim,
-    // IntakeWristConstants.kGSim, IntakeWristConstants.kVSim);
   }
 
   @Override
   public void updateInputs() {
     intakeWristMotorSim.update(0.02);
+    super.currentPosition = intakeWristMotorSim.getAngularPositionRad() / (2.0 * Math.PI);
+    super.voltage = intakeWristMotorSim.getInputVoltage();
     super.statorCurrent = intakeWristMotorSim.getCurrentDrawAmps();
-    super.currentPosition = intakeWristMotorSim.getAngularPositionRad();
     super.atSetpoint = Math.abs(super.currentPosition - super.targetPosition) < 0.02;
-    super.isWristJammed = false;
 
-    DogLog.log("Intake/Wrist/StatorCurrent", super.statorCurrent);
     DogLog.log("Intake/Wrist/Position", super.currentPosition);
     DogLog.log("Intake/Wrist/TargetPosition", super.targetPosition);
     DogLog.log("Intake/Wrist/Voltage", super.voltage);
+    DogLog.log("Intake/Wrist/StatorCurrent", super.statorCurrent);
     DogLog.log("Intake/Wrist/AtSetpoint", super.atSetpoint);
   }
 
@@ -67,8 +61,14 @@ public class IntakeWristIOSim extends IntakeWristIO {
   }
 
   @Override
+  public double getPosition() {
+    return super.currentPosition;
+  }
+
+  @Override
   public void setVoltage(double voltage) {
-    super.voltage = voltage;
-    intakeWristMotorSim.setInputVoltage(voltage);
+    double clampedVoltage = MathUtil.clamp(voltage, -12.0, 12.0);
+    super.voltage = clampedVoltage;
+    intakeWristMotorSim.setInputVoltage(clampedVoltage);
   }
 }
